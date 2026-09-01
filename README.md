@@ -47,9 +47,9 @@ Alles zusammen als ZIP mit MIME-Typ `application/vnd.apple.pkpass`.
 
 ## Abhängigkeiten
 
-Per CDN geladen: JSZip, node-forge, pdf.js, qrcode, `zxing-wasm` (Barcode-Erkennung
-als ES-Modul, WebAssembly-Kern von ZXing-C++). `zxing-wasm` ersetzt die vorher
-genutzte reine JS-Portierung `@zxing/library`, die bestimmte echte Aztec-Codes
-(z. B. Eurowings-Bordkarten) auch auf sauberen Bildern nicht zuverlässig las.
-Für Offline-Betrieb die Dateien ins Repo legen und die `<script src>`/`import`
-anpassen.
+Per CDN geladen: JSZip, node-forge, pdf.js, qrcode, `zxing-wasm` (Barcode-Erkennung,
+IIFE-Build, globaler Name `ZXingWASM`, WebAssembly-Kern von ZXing-C++). `zxing-wasm`
+ersetzt die vorher genutzte reine JS-Portierung `@zxing/library`, die bestimmte
+echte Aztec-Codes (z. B. Eurowings-Bordkarten) auch auf sauberen Bildern nicht
+zuverlässig las. Für Offline-Betrieb die Dateien ins Repo legen und die
+`<script src>` anpassen.
