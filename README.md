@@ -39,8 +39,6 @@ Alles zusammen als ZIP mit MIME-Typ `application/vnd.apple.pkpass`.
 ## Grenzen
 
 - Barcodes werden **nicht umkodiert**. Ein Aztec-Code bleibt Aztec, sonst scheitert die Kontrolle.
-- Bei Airline-PDFs (z. B. Eurowings), bei denen der Code klein auf einer ganzen A4-Seite sitzt,
-  scannt die App zusätzlich zur ganzen Seite auch überlappende Ausschnitte in höherer Auflösung.
 - Binäre Nutzlasten (häufig bei Bahntickets) überstehen den Umweg über Text nicht immer.
   Wenn die App auf `utf-8` umschaltet, ist Vorsicht angebracht.
 - Ob ein selbst gebauter Pass am Kontrollgerät akzeptiert wird, entscheidet der Anbieter.
@@ -49,5 +47,9 @@ Alles zusammen als ZIP mit MIME-Typ `application/vnd.apple.pkpass`.
 
 ## Abhängigkeiten
 
-Per CDN geladen: JSZip, node-forge, `@zxing/library`, pdf.js, qrcode.
-Für Offline-Betrieb die Dateien ins Repo legen und die `<script src>` anpassen.
+Per CDN geladen: JSZip, node-forge, pdf.js, qrcode, `zxing-wasm` (Barcode-Erkennung
+als ES-Modul, WebAssembly-Kern von ZXing-C++). `zxing-wasm` ersetzt die vorher
+genutzte reine JS-Portierung `@zxing/library`, die bestimmte echte Aztec-Codes
+(z. B. Eurowings-Bordkarten) auch auf sauberen Bildern nicht zuverlässig las.
+Für Offline-Betrieb die Dateien ins Repo legen und die `<script src>`/`import`
+anpassen.
