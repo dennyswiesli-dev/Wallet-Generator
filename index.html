@@ -373,10 +373,15 @@ footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);font-si
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-<script>
+<script type="module">
+/* zxing-wasm bindet den echten ZXing-C++-Kern als WebAssembly ein. Die
+   reine JS-Portierung @zxing/library scheitert an manchen echten
+   Aztec-Codes (z. B. Eurowings-Bordkarten) selbst auf einem sauberen,
+   unbeschnittenen Bild – zxing-wasm liest dieselben Codes zuverlässig. */
+import { readBarcodes } from "https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.3/dist/reader/index.js";
+
 (function(){
 "use strict";
 
@@ -400,90 +405,17 @@ function markDone(id, done){
 
 /* ---------------- Barcode einlesen ---------------- */
 
-var ZX_FORMATS = null, ZX_HINTS = null;
-function zxHints(){
-  if (ZX_HINTS) return ZX_HINTS;
-  ZX_FORMATS = [
-    ZXing.BarcodeFormat.QR_CODE,
-    ZXing.BarcodeFormat.AZTEC,
-    ZXing.BarcodeFormat.PDF_417,
-    ZXing.BarcodeFormat.DATA_MATRIX,
-    ZXing.BarcodeFormat.CODE_128
-  ];
-  ZX_HINTS = new Map();
-  ZX_HINTS.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, ZX_FORMATS);
-  ZX_HINTS.set(ZXing.DecodeHintType.TRY_HARDER, true);
-  return ZX_HINTS;
-}
+var ZXW_FORMATS = ["Aztec", "QRCode", "PDF417", "Code128", "DataMatrix"];
 
-/* Airline-PDFs (z. B. Eurowings) betten den Barcode oft klein in eine
-   ganze A4-Seite ein. Der MultiFormatReader über die ganze Seite findet
-   das Muster dann selten. Deshalb: mehrere Binarizer, mehrere Ausschnitte
-   (Kacheln) und mehrere Skalierungen probieren, statt nur ein Mal die
-   ganze Fläche zu lesen. */
-var ZX_BINARIZERS = null;
-function zxBinarizers(){
-  if (!ZX_BINARIZERS){
-    ZX_BINARIZERS = [ZXing.HybridBinarizer];
-    if (ZXing.GlobalHistogramBinarizer) ZX_BINARIZERS.push(ZXing.GlobalHistogramBinarizer);
-  }
-  return ZX_BINARIZERS;
-}
-
-function decodeSource(src){
-  var reader = new ZXing.MultiFormatReader();
-  reader.setHints(zxHints());
-  var binarizers = zxBinarizers();
-  var variants = [src, src.invert()];
-  for (var v = 0; v < variants.length; v++){
-    for (var b = 0; b < binarizers.length; b++){
-      try {
-        var Binarizer = binarizers[b];
-        var bitmap = new ZXing.BinaryBitmap(new Binarizer(variants[v]));
-        var res = reader.decode(bitmap, zxHints());
-        if (res) return { text: res.getText(), format: res.getBarcodeFormat() };
-      } catch (e) { /* nächster Versuch */ }
-    }
-  }
-  return null;
-}
-
-function canvasRegion(canvas, x, y, w, h){
-  var c = document.createElement("canvas");
-  c.width = w; c.height = h;
-  c.getContext("2d").drawImage(canvas, x, y, w, h, 0, 0, w, h);
-  return c;
-}
-
-function luminanceSourceFor(canvas){
+async function decodeCanvas(canvas){
   var ctx = canvas.getContext("2d");
   var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  return new ZXing.RGBLuminanceSource(img.data, canvas.width, canvas.height);
-}
-
-function decodeCanvas(canvas){
-  /* 1) ganze Fläche */
-  var hit = decodeSource(luminanceSourceFor(canvas));
-  if (hit) return hit;
-
-  /* 2) Kacheln, falls der Code klein in einer grossen Seite steckt */
-  var W = canvas.width, H = canvas.height;
-  if (W * H < 400 * 400) return null;
-  var cols = 3, rows = 3, overlap = 0.15;
-  var tileW = Math.ceil(W / cols), tileH = Math.ceil(H / rows);
-  var padW = Math.round(tileW * overlap), padH = Math.round(tileH * overlap);
-  for (var r = 0; r < rows; r++){
-    for (var c = 0; c < cols; c++){
-      var x = Math.max(0, c * tileW - padW);
-      var y = Math.max(0, r * tileH - padH);
-      var w = Math.min(W - x, tileW + padW * 2);
-      var h = Math.min(H - y, tileH + padH * 2);
-      if (w < 60 || h < 60) continue;
-      var region = canvasRegion(canvas, x, y, w, h);
-      var found = decodeSource(luminanceSourceFor(region));
-      if (found) return found;
-    }
-  }
+  var results = await readBarcodes(img, {
+    formats: ZXW_FORMATS,
+    tryHarder: true,
+    maxNumberOfSymbols: 1
+  });
+  if (results && results.length) return { text: results[0].text, format: results[0].format };
   return null;
 }
 
@@ -533,42 +465,42 @@ function pdfToCanvases(file){
 }
 
 var FORMAT_MAP = {
-  QR_CODE: "PKBarcodeFormatQR",
-  AZTEC: "PKBarcodeFormatAztec",
-  PDF_417: "PKBarcodeFormatPDF417",
-  CODE_128: "PKBarcodeFormatCode128"
+  QRCode: "PKBarcodeFormatQR",
+  Aztec: "PKBarcodeFormatAztec",
+  PDF417: "PKBarcodeFormatPDF417",
+  Code128: "PKBarcodeFormatCode128"
 };
 
-function handleTicket(file){
+async function handleTicket(file){
   if (!file) return;
   var st = $("scanStatus");
   setStatus(st, "Datei wird gelesen …", "busy");
   var isPdf = /pdf$/i.test(file.type) || /\.pdf$/i.test(file.name);
-  var job = isPdf ? pdfToCanvases(file) : fileToCanvasImage(file);
 
-  job.then(function(canvases){
+  try {
+    var canvases = await (isPdf ? pdfToCanvases(file) : fileToCanvasImage(file));
     var hit = null;
-    for (var i = 0; i < canvases.length && !hit; i++) hit = decodeCanvas(canvases[i]);
+    for (var i = 0; i < canvases.length && !hit; i++) hit = await decodeCanvas(canvases[i]);
     if (!hit){
       setStatus(st, "<b>Kein Code gefunden.</b> Probiere einen schärferen Ausschnitt, nur den Code fotografiert – oder füge den Inhalt unten von Hand ein.", "err");
       markDone("s1", false);
       return;
     }
-    var name = String(hit.format && hit.format.toString ? ZXing.BarcodeFormat[hit.format] : "");
+    var name = hit.format || "";
     var mapped = FORMAT_MAP[name] || "PKBarcodeFormatQR";
     $("bcMessage").value = hit.text;
     $("bcFormat").value = mapped;
     var latin1 = /^[\x00-\xFF]*$/.test(hit.text);
     if (!latin1) $("bcEncoding").value = "utf-8";
     setStatus(st,
-      "<b>Code gelesen.</b> Format " + (name || "unbekannt").replace("_", "") +
+      "<b>Code gelesen.</b> Format " + (name || "unbekannt") +
       ", " + hit.text.length + " Zeichen." +
       (latin1 ? "" : " Enthält Zeichen ausserhalb iso-8859-1 – Kodierung auf utf-8 gesetzt."), "ok");
     markDone("s1", true);
     refresh();
-  }).catch(function(err){
+  } catch (err) {
     setStatus(st, "<b>Datei liess sich nicht öffnen.</b> " + err.message, "err");
-  });
+  }
 }
 
 /* ---------------- Zertifikate ---------------- */
