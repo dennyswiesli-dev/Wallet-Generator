@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Billett → Wallet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E7E4DC;
+  --paper-2:#DFDBD1;
+  --ink:#16181C;
+  --ink-soft:#5F6067;
+  --rule:#C6C1B4;
+  --signal:#B5121B;
+  --ok:#1E6B41;
+  --pass-bg:#1F2933;
+  --pass-fg:#FFFFFF;
+  --pass-label:#B7C0C9;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Archivo',system-ui,-apple-system,sans-serif;
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 80px}
+
+/* ---------- Kopf ---------- */
+header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:28px}
+h1{
+  font-size:clamp(30px,7vw,52px);
+  font-weight:700;
+  letter-spacing:-.03em;
+  line-height:.98;
+  margin:0 0 10px;
+  max-width:14ch;
+}
+h1 .slash{color:var(--signal)}
+.lede{margin:0;max-width:62ch;color:var(--ink-soft);font-size:15px}
+
+/* ---------- Layout ---------- */
+.cols{display:grid;grid-template-columns:1fr;gap:34px}
+@media(min-width:900px){
+  .cols{grid-template-columns:minmax(0,1fr) 372px;gap:48px;align-items:start}
+  .aside{position:sticky;top:24px}
+}
+
+/* ---------- Schritte ---------- */
+.step{border-top:1px solid var(--rule);padding:22px 0 4px}
+.step:first-of-type{border-top:none;padding-top:0}
+.step-head{display:flex;gap:12px;align-items:baseline;margin-bottom:14px}
+.num{
+  flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+  border:1.5px solid var(--ink);display:grid;place-items:center;
+  font-size:13px;font-weight:600;transform:translateY(3px);
+}
+.step[data-done="1"] .num{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.step h2{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0}
+.step-note{font-size:13.5px;color:var(--ink-soft);margin:-8px 0 14px 38px}
+.step-body{margin-left:38px}
+@media(max-width:520px){.step-body,.step-note{margin-left:0}}
+
+/* ---------- Formular ---------- */
+label{display:block;font-size:13px;font-weight:500;margin-bottom:5px}
+input[type=text],input[type=password],input[type=datetime-local],select,textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--rule);border-radius:3px;
+  background:#F3F1EC;color:var(--ink);font:inherit;font-size:15px;
+}
+textarea{min-height:72px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible,.drop:focus-visible{
+  outline:2px solid var(--signal);outline-offset:1px
+}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{margin-bottom:12px}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px}
+
+/* ---------- Dropzone ---------- */
+.drop{
+  border:1.5px dashed var(--rule);border-radius:4px;background:#F3F1EC;
+  padding:26px 18px;text-align:center;cursor:pointer;display:block;
+}
+.drop:hover,.drop.over{border-color:var(--signal);background:#EFEBE3}
+.drop strong{display:block;font-weight:600;font-size:15px}
+.drop span{font-size:13px;color:var(--ink-soft)}
+
+/* ---------- Status ---------- */
+.status{margin-top:12px;padding:10px 12px;border-left:3px solid var(--rule);background:#F3F1EC;font-size:13.5px}
+.status.ok{border-color:var(--ok)}
+.status.err{border-color:var(--signal)}
+.status.busy{border-color:var(--ink)}
+.status b{font-weight:600}
+
+/* ---------- Buttons ---------- */
+button{font:inherit;cursor:pointer;border-radius:3px}
+.btn{
+  background:var(--ink);color:var(--paper);border:1.5px solid var(--ink);
+  padding:12px 22px;font-weight:600;font-size:16px;
+}
+.btn:hover:not(:disabled){background:var(--signal);border-color:var(--signal)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:none;border:1.5px solid var(--rule);color:var(--ink);padding:9px 16px;font-size:14px}
+.btn-ghost:hover{border-color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
+
+/* ---------- Pass-Vorschau ---------- */
+.aside h3{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--ink-soft)}
+.pass{
+  background:var(--pass-bg);color:var(--pass-fg);
+  border-radius:12px;padding:16px 16px 20px;
+  box-shadow:0 1px 0 var(--rule),0 14px 34px rgba(20,18,14,.18);
+  overflow:hidden;
+}
+.p-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:22px}
+.p-org{font-size:13px;font-weight:600;letter-spacing:.01em}
+.p-head{text-align:right}
+.p-lab{font-size:9.5px;font-weight:500;color:var(--pass-label);display:block;margin-bottom:1px}
+.p-val{font-size:14px;font-weight:600}
+.p-primary{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:3px;overflow-wrap:anywhere}
+.p-primary .p-lab{font-size:9.5px;font-weight:500}
+.p-row{display:flex;gap:18px;margin-top:16px;flex-wrap:wrap}
+.p-row>div{min-width:0}
+.p-row .p-val{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.p-perf{
+  margin:20px -16px 16px;height:1px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.32) 0 5px,transparent 5px 10px);
+}
+.p-code{background:#fff;border-radius:6px;padding:9px;display:grid;place-items:center;min-height:118px}
+.p-code canvas{display:block;width:110px;height:110px;image-rendering:pixelated}
+.p-code .ph{text-align:center;color:#4A4A4A;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.5;padding:12px 6px}
+.p-code .ph b{display:block;font-size:12px;color:#111}
+
+/* ---------- Info ---------- */
+.info{margin-top:22px;border:1px solid var(--rule);border-radius:4px;padding:14px 16px;font-size:13.5px;background:#EFECE5}
+.info h4{margin:0 0 7px;font-size:14px;font-weight:600}
+.info p{margin:0 0 8px;color:var(--ink-soft)}
+.info p:last-child{margin-bottom:0}
+.info a{color:var(--signal)}
+.chip{display:inline-block;padding:2px 7px;border:1px solid var(--rule);border-radius:99px;font-size:11.5px;margin:2px 4px 2px 0;background:#F3F1EC}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--ink-soft);max-width:70ch}
+.hidden{display:none}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Billett <span class="slash">→</span> Wallet</h1>
+  <p class="lede">Barcode aus einem Ticket auslesen, Passdaten ergänzen, als <span class="mono">.pkpass</span> herunterladen. Alles läuft lokal im Browser – weder Ticket noch Zertifikat werden hochgeladen.</p>
+</header>
+
+<div class="cols">
+<main>
+
+  <!-- 1 -->
+  <section class="step" id="s1">
+    <div class="step-head"><div class="num">1</div><h2>Ticket einlesen</h2></div>
+    <p class="step-note">PDF, PNG oder JPG. Erkannt werden QR, Aztec, PDF417 und Code 128.</p>
+    <div class="step-body">
+      <label class="drop" id="drop" tabindex="0">
+        <strong>Datei wählen oder hierher ziehen</strong>
+        <span>Der Code wird ausgelesen, nicht neu erzeugt.</span>
+        <input type="file" id="ticketFile" accept="image/*,application/pdf" class="hidden">
+      </label>
+      <div class="status" id="scanStatus">Noch keine Datei gelesen.</div>
+
+      <div class="field" style="margin-top:14px">
+        <label for="bcMessage">Codeinhalt</label>
+        <textarea id="bcMessage" class="mono" placeholder="Wird beim Einlesen gefüllt – oder hier einfügen"></textarea>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label for="bcFormat">Codeformat im Pass</label>
+          <select id="bcFormat">
+            <option value="PKBarcodeFormatQR">QR</option>
+            <option value="PKBarcodeFormatAztec">Aztec</option>
+            <option value="PKBarcodeFormatPDF417">PDF417</option>
+            <option value="PKBarcodeFormatCode128">Code 128</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="bcEncoding">Zeichenkodierung</label>
+          <select id="bcEncoding">
+            <option value="iso-8859-1">iso-8859-1 (Standard)</option>
+            <option value="utf-8">utf-8</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="bcAlt">Text unter dem Code (optional)</label>
+        <input type="text" id="bcAlt" placeholder="z. B. Buchungsnummer">
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="step" id="s2">
+    <div class="step-head"><div class="num">2</div><h2>Passdaten</h2></div>
+    <div class="step-body">
+      <div class="grid2">
+        <div class="field">
+          <label for="passStyle">Passtyp</label>
+          <select id="passStyle">
+            <option value="eventTicket">Eintrittskarte</option>
+            <option value="boardingPass">Fahrschein / Bordkarte</option>
+            <option value="generic">Allgemein</option>
+          </select>
+        </div>
+        <div class="field" id="transitWrap">
+          <label for="transitType">Verkehrsmittel</label>
+          <select id="transitType">
+            <option value="PKTransitTypeTrain">Zug</option>
+            <option value="PKTransitTypeBus">Bus</option>
+            <option value="PKTransitTypeBoat">Schiff</option>
+            <option value="PKTransitTypeAir">Flug</option>
+            <option value="PKTransitTypeGeneric">Anderes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label for="orgName">Anbieter</label>
+          <input type="text" id="orgName" value="riag" placeholder="z. B. SBB">
+        </div>
+        <div class="field">
+          <label for="passDesc">Kurzbeschreibung</label>
+          <input type="text" id="passDesc" placeholder="z. B. Fahrschein">
+        </div>
+      </div>
+
+      <div id="fieldsEvent">
+        <div class="field">
+          <label for="evTitle">Titel</label>
+          <input type="text" id="evTitle" placeholder="z. B. Konzert im Hallenstadion">
+        </div>
+      </div>
+
+      <div id="fieldsRoute" class="grid2 hidden">
+        <div class="field">
+          <label for="evFrom">Von</label>
+          <input type="text" id="evFrom" placeholder="Wängi">
+        </div>
+        <div class="field">
+          <label for="evTo">Nach</label>
+          <input type="text" id="evTo" placeholder="Zürich HB">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label for="evDate">Datum und Zeit</label>
+          <input type="datetime-local" id="evDate">
+        </div>
+        <div class="field">
+          <label for="evVenue">Ort</label>
+          <input type="text" id="evVenue" placeholder="z. B. Gleis 7">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label for="evSeat">Platz oder Klasse</label>
+          <input type="text" id="evSeat" placeholder="z. B. 2. Klasse">
+        </div>
+        <div class="field">
+          <label for="evName">Name</label>
+          <input type="text" id="evName" placeholder="Reisende Person">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="evNotes">Rückseite des Passes</label>
+        <textarea id="evNotes" placeholder="Bedingungen, Buchungsnummer, Kontakt …"></textarea>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label for="colBg">Hintergrund</label>
+          <input type="text" id="colBg" class="mono" value="#1F2933">
+        </div>
+        <div class="field">
+          <label for="colFg">Schrift</label>
+          <input type="text" id="colFg" class="mono" value="#FFFFFF">
+        </div>
+      </div>
+      <div class="field">
+        <label for="logoFile">Logo (optional, PNG)</label>
+        <input type="file" id="logoFile" accept="image/png,image/jpeg">
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="step" id="s3">
+    <div class="step-head"><div class="num">3</div><h2>Signatur</h2></div>
+    <p class="step-note">iOS installiert nur signierte Pässe. Beide Dateien bleiben im Browser.</p>
+    <div class="step-body">
+      <div class="grid2">
+        <div class="field">
+          <label for="p12File">Pass Type ID Zertifikat (.p12)</label>
+          <input type="file" id="p12File" accept=".p12,.pfx">
+        </div>
+        <div class="field">
+          <label for="p12Pass">Passwort des .p12</label>
+          <input type="password" id="p12Pass" autocomplete="off">
+        </div>
+      </div>
+      <div class="field">
+        <label for="wwdrFile">Apple WWDR Zwischenzertifikat (.cer oder .pem)</label>
+        <input type="file" id="wwdrFile" accept=".cer,.pem,.crt,.der">
+      </div>
+      <div class="actions">
+        <button class="btn-ghost" id="btnCert">Zertifikate prüfen</button>
+      </div>
+      <div class="status" id="certStatus">Noch nichts geladen.</div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="step" id="s4">
+    <div class="step-head"><div class="num">4</div><h2>Pass erzeugen</h2></div>
+    <div class="step-body">
+      <div class="actions">
+        <button class="btn" id="btnBuild" disabled>Signierten Pass herunterladen</button>
+        <button class="btn-ghost" id="btnJson">Nur pass.json ansehen</button>
+      </div>
+      <div class="status" id="buildStatus">Bereit, sobald Codeinhalt und Zertifikate vorliegen.</div>
+    </div>
+  </section>
+
+</main>
+
+<aside class="aside">
+  <h3>Vorschau</h3>
+  <div class="pass" id="pv">
+    <div class="p-top">
+      <div class="p-org" id="pvOrg">riag</div>
+      <div class="p-head"><span class="p-lab" id="pvHeadLab">Datum</span><span class="p-val" id="pvHeadVal">—</span></div>
+    </div>
+    <div>
+      <span class="p-lab" id="pvPrimLab">Titel</span>
+      <div class="p-primary" id="pvPrim">Noch kein Titel</div>
+    </div>
+    <div class="p-row" id="pvRow"></div>
+    <div class="p-perf"></div>
+    <div class="p-code" id="pvCode">
+      <div class="ph"><b>Kein Code</b>Ticket in Schritt 1 einlesen</div>
+    </div>
+  </div>
+
+  <div class="info">
+    <h4>Wieso ein Zertifikat nötig ist</h4>
+    <p>Apple Wallet akzeptiert ausschliesslich <span class="mono">.pkpass</span>-Dateien, deren Inhaltsverzeichnis mit einem Pass Type ID Zertifikat signiert ist. Dieses gibt es nur über das Apple Developer Program.</p>
+    <p>So kommst du dran: Developer-Konto lösen, unter Identifiers eine Pass Type ID anlegen, das Zertifikat erzeugen, in der Schlüsselbundverwaltung als <span class="mono">.p12</span> exportieren. Das WWDR-Zwischenzertifikat lädst du bei Apple im Bereich Certificates herunter.</p>
+    <p><span class="chip">Signierung im Browser</span><span class="chip">kein Server</span><span class="chip">kein Upload</span></p>
+  </div>
+</aside>
+</div>
+
+<footer>
+  Hinweis zu Fahrscheinen: Codes von Anbietern wie SBB sind oft signierte Aztec-Codes und dürfen nicht in ein anderes Format umkodiert werden – behalte in Schritt 1 das erkannte Format bei. Ob ein selbst gebauter Pass am Kontrollgerät akzeptiert wird, entscheidet der Anbieter, nicht das Format.
+</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+}
+
+var $ = function(id){ return document.getElementById(id); };
+var v = function(id){ var e = $(id); return e ? e.value.trim() : ""; };
+
+var state = { cert:null, key:null, wwdr:null, passTypeId:"", teamId:"", logo:null };
+
+function setStatus(el, text, kind){
+  el.className = "status" + (kind ? " " + kind : "");
+  el.innerHTML = text;
+}
+function markDone(id, done){
+  var s = $(id); if (s) s.setAttribute("data-done", done ? "1" : "0");
+}
+
+/* ---------------- Barcode einlesen ---------------- */
+
+var ZX_FORMATS = null, ZX_HINTS = null;
+function zxHints(){
+  if (ZX_HINTS) return ZX_HINTS;
+  ZX_FORMATS = [
+    ZXing.BarcodeFormat.QR_CODE,
+    ZXing.BarcodeFormat.AZTEC,
+    ZXing.BarcodeFormat.PDF_417,
+    ZXing.BarcodeFormat.DATA_MATRIX,
+    ZXing.BarcodeFormat.CODE_128
+  ];
+  ZX_HINTS = new Map();
+  ZX_HINTS.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, ZX_FORMATS);
+  ZX_HINTS.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  return ZX_HINTS;
+}
+
+function decodeCanvas(canvas){
+  var ctx = canvas.getContext("2d");
+  var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var src = new ZXing.RGBLuminanceSource(img.data, canvas.width, canvas.height);
+  var attempts = [src, src.invert()];
+  for (var i = 0; i < attempts.length; i++){
+    try {
+      var bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(attempts[i]));
+      var reader = new ZXing.MultiFormatReader();
+      reader.setHints(zxHints());
+      var res = reader.decode(bitmap, zxHints());
+      if (res) return { text: res.getText(), format: res.getBarcodeFormat() };
+    } catch (e) { /* nächster Versuch */ }
+  }
+  return null;
+}
+
+function fileToCanvasImage(file){
+  return new Promise(function(resolve, reject){
+    var url = URL.createObjectURL(file);
+    var im = new Image();
+    im.onload = function(){
+      var scale = Math.min(2200 / Math.max(im.width, im.height), 3);
+      if (!isFinite(scale) || scale < 1) scale = 1;
+      var c = document.createElement("canvas");
+      c.width = Math.round(im.width * scale);
+      c.height = Math.round(im.height * scale);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve([c]);
+    };
+    im.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("Bild nicht lesbar")); };
+    im.src = url;
+  });
+}
+
+function pdfToCanvases(file){
+  return file.arrayBuffer().then(function(buf){
+    return pdfjsLib.getDocument({ data: buf }).promise;
+  }).then(function(pdf){
+    var pages = Math.min(pdf.numPages, 4), tasks = [];
+    for (var p = 1; p <= pages; p++){
+      tasks.push(pdf.getPage(p).then(function(page){
+        var vp = page.getViewport({ scale: 3 });
+        var c = document.createElement("canvas");
+        c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        return page.render({ canvasContext: c.getContext("2d"), viewport: vp })
+                   .promise.then(function(){ return c; });
+      }));
+    }
+    return Promise.all(tasks);
+  });
+}
+
+var FORMAT_MAP = {
+  QR_CODE: "PKBarcodeFormatQR",
+  AZTEC: "PKBarcodeFormatAztec",
+  PDF_417: "PKBarcodeFormatPDF417",
+  CODE_128: "PKBarcodeFormatCode128"
+};
+
+function handleTicket(file){
+  if (!file) return;
+  var st = $("scanStatus");
+  setStatus(st, "Datei wird gelesen …", "busy");
+  var isPdf = /pdf$/i.test(file.type) || /\.pdf$/i.test(file.name);
+  var job = isPdf ? pdfToCanvases(file) : fileToCanvasImage(file);
+
+  job.then(function(canvases){
+    var hit = null;
+    for (var i = 0; i < canvases.length && !hit; i++) hit = decodeCanvas(canvases[i]);
+    if (!hit){
+      setStatus(st, "<b>Kein Code gefunden.</b> Probiere einen schärferen Ausschnitt, nur den Code fotografiert – oder füge den Inhalt unten von Hand ein.", "err");
+      markDone("s1", false);
+      return;
+    }
+    var name = String(hit.format && hit.format.toString ? ZXing.BarcodeFormat[hit.format] : "");
+    var mapped = FORMAT_MAP[name] || "PKBarcodeFormatQR";
+    $("bcMessage").value = hit.text;
+    $("bcFormat").value = mapped;
+    var latin1 = /^[\x00-\xFF]*$/.test(hit.text);
+    if (!latin1) $("bcEncoding").value = "utf-8";
+    setStatus(st,
+      "<b>Code gelesen.</b> Format " + (name || "unbekannt").replace("_", "") +
+      ", " + hit.text.length + " Zeichen." +
+      (latin1 ? "" : " Enthält Zeichen ausserhalb iso-8859-1 – Kodierung auf utf-8 gesetzt."), "ok");
+    markDone("s1", true);
+    refresh();
+  }).catch(function(err){
+    setStatus(st, "<b>Datei liess sich nicht öffnen.</b> " + err.message, "err");
+  });
+}
+
+/* ---------------- Zertifikate ---------------- */
+
+function readBinary(file){
+  return file.arrayBuffer().then(function(b){ return new Uint8Array(b); });
+}
+function bytesToForgeString(u8){
+  var s = "";
+  for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+  return s;
+}
+
+function loadCertificates(){
+  var st = $("certStatus");
+  var p12File = $("p12File").files[0];
+  var wwdrFile = $("wwdrFile").files[0];
+  if (!p12File || !wwdrFile){
+    setStatus(st, "Es fehlt " + (!p12File ? "das .p12" : "das WWDR-Zertifikat") + ".", "err");
+    return;
+  }
+  setStatus(st, "Zertifikate werden gelesen …", "busy");
+
+  Promise.all([readBinary(p12File), readBinary(wwdrFile)]).then(function(res){
+    var p12Bytes = res[0], wwdrBytes = res[1];
+
+    var asn1 = forge.asn1.fromDer(forge.util.createBuffer(bytesToForgeString(p12Bytes)));
+    var p12 = forge.pkcs12.pkcs12FromAsn1(asn1, v("p12Pass"));
+
+    var certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] || [];
+    var keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] || [];
+    if (!keyBags.length) keyBags = p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag] || [];
+    if (!keyBags.length) throw new Error("Im .p12 steckt kein privater Schlüssel.");
+
+    var signer = null;
+    for (var i = 0; i < certBags.length; i++){
+      var c = certBags[i].cert;
+      var cn = c.subject.getField("CN");
+      if (cn && /Pass Type ID/i.test(cn.value)) { signer = c; break; }
+    }
+    if (!signer && certBags.length) signer = certBags[0].cert;
+    if (!signer) throw new Error("Im .p12 steckt kein Zertifikat.");
+
+    var cnField = signer.subject.getField("CN");
+    var ouField = signer.subject.getField("OU");
+    var cn = cnField ? cnField.value : "";
+    var passTypeId = cn.replace(/^Pass Type ID:\s*/i, "").trim();
+    var teamId = ouField ? ouField.value : "";
+
+    var wwdrTxt = bytesToForgeString(wwdrBytes);
+    var wwdr = /BEGIN CERTIFICATE/.test(wwdrTxt)
+      ? forge.pki.certificateFromPem(wwdrTxt)
+      : forge.pki.certificateFromAsn1(forge.asn1.fromDer(forge.util.createBuffer(wwdrTxt)));
+
+    state.cert = signer;
+    state.key = keyBags[0].key;
+    state.wwdr = wwdr;
+    state.passTypeId = passTypeId;
+    state.teamId = teamId;
+
+    var expired = signer.validity.notAfter < new Date();
+    setStatus(st,
+      "<b>Zertifikat geladen.</b><br>Pass Type ID: <span class='mono'>" + (passTypeId || "unbekannt") + "</span>" +
+      "<br>Team ID: <span class='mono'>" + (teamId || "unbekannt") + "</span>" +
+      "<br>Gültig bis: " + signer.validity.notAfter.toLocaleDateString("de-CH") +
+      (expired ? " — <b>abgelaufen</b>" : ""),
+      expired ? "err" : "ok");
+    markDone("s3", !expired);
+    refresh();
+  }).catch(function(err){
+    state.cert = state.key = state.wwdr = null;
+    markDone("s3", false);
+    var msg = /Invalid password|MAC/i.test(err.message)
+      ? "Passwort passt nicht zum .p12."
+      : err.message;
+    setStatus(st, "<b>Fehlgeschlagen.</b> " + msg, "err");
+    refresh();
+  });
+}
+
+/* ---------------- Bilder ---------------- */
+
+function canvasToBytes(canvas){
+  return new Promise(function(resolve){
+    canvas.toBlob(function(blob){
+      blob.arrayBuffer().then(function(b){ resolve(new Uint8Array(b)); });
+    }, "image/png");
+  });
+}
+
+function drawIcon(size){
+  var c = document.createElement("canvas");
+  c.width = c.height = size;
+  var x = c.getContext("2d");
+  x.fillStyle = v("colBg") || "#1F2933";
+  x.fillRect(0, 0, size, size);
+  x.fillStyle = v("colFg") || "#FFFFFF";
+  x.font = "600 " + Math.round(size * 0.52) + "px Archivo, Helvetica, Arial, sans-serif";
+  x.textAlign = "center"; x.textBaseline = "middle";
+  var initial = (v("orgName") || "P").charAt(0).toUpperCase();
+  x.fillText(initial, size / 2, size / 2 + size * 0.04);
+  return canvasToBytes(c);
+}
+
+function drawLogo(w, h){
+  var c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  var x = c.getContext("2d");
+  x.clearRect(0, 0, w, h);
+  if (state.logo){
+    var r = Math.min(w / state.logo.width, h / state.logo.height);
+    var lw = state.logo.width * r, lh = state.logo.height * r;
+    x.drawImage(state.logo, 0, (h - lh) / 2, lw, lh);
+  } else {
+    x.fillStyle = v("colFg") || "#FFFFFF";
+    x.font = "600 " + Math.round(h * 0.62) + "px Archivo, Helvetica, Arial, sans-serif";
+    x.textAlign = "left"; x.textBaseline = "middle";
+    x.fillText((v("orgName") || "Pass").slice(0, 18), 0, h / 2);
+  }
+  return canvasToBytes(c);
+}
+
+function buildImages(){
+  return Promise.all([
+    drawIcon(29), drawIcon(58), drawIcon(87),
+    drawLogo(160, 50), drawLogo(320, 100)
+  ]).then(function(a){
+    return {
+      "icon.png": a[0], "icon@2x.png": a[1], "icon@3x.png": a[2],
+      "logo.png": a[3], "logo@2x.png": a[4]
+    };
+  });
+}
+
+/* ---------------- pass.json ---------------- */
+
+function hexToRgb(hex){
+  var h = (hex || "").replace("#", "").trim();
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  if (!/^[0-9a-f]{6}$/i.test(h)) return null;
+  return "rgb(" + parseInt(h.slice(0,2),16) + "," + parseInt(h.slice(2,4),16) + "," + parseInt(h.slice(4,6),16) + ")";
+}
+
+function localToIso(value){
+  if (!value) return null;
+  var d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  function p(n){ return (n < 10 ? "0" : "") + n; }
+  var off = -d.getTimezoneOffset();
+  var sign = off >= 0 ? "+" : "-";
+  var abs = Math.abs(off);
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate()) + "T" +
+         p(d.getHours()) + ":" + p(d.getMinutes()) + ":00" +
+         sign + p(Math.floor(abs/60)) + ":" + p(abs%60);
+}
+
+function buildFields(){
+  var style = v("passStyle");
+  var f = { headerFields:[], primaryFields:[], secondaryFields:[], auxiliaryFields:[], backFields:[] };
+  var iso = localToIso(v("evDate"));
+
+  if (style === "boardingPass"){
+    f.primaryFields.push({ key:"from", label:"Von", value: v("evFrom") || "—" });
+    f.primaryFields.push({ key:"to", label:"Nach", value: v("evTo") || "—" });
+  } else {
+    f.primaryFields.push({ key:"title", label:"Anlass", value: v("evTitle") || v("passDesc") || "Ticket" });
+  }
+
+  if (iso){
+    f.headerFields.push({ key:"when", label:"Zeit", value: iso, dateStyle:"PKDateStyleShort", timeStyle:"PKDateStyleShort" });
+    f.secondaryFields.push({ key:"date", label:"Datum", value: iso, dateStyle:"PKDateStyleMedium", timeStyle:"PKDateStyleShort" });
+  }
+  if (v("evVenue")) f.secondaryFields.push({ key:"venue", label:"Ort", value: v("evVenue") });
+  if (v("evSeat")) f.auxiliaryFields.push({ key:"seat", label:"Platz", value: v("evSeat") });
+  if (v("evName")) f.auxiliaryFields.push({ key:"name", label:"Name", value: v("evName") });
+  if (v("bcAlt")) f.backFields.push({ key:"ref", label:"Referenz", value: v("bcAlt") });
+  if (v("evNotes")) f.backFields.push({ key:"notes", label:"Hinweise", value: v("evNotes") });
+
+  return { style: style, fields: f };
+}
+
+function buildPassJson(){
+  var b = buildFields();
+  var pass = {
+    formatVersion: 1,
+    passTypeIdentifier: state.passTypeId || "pass.beispiel.ticket",
+    teamIdentifier: state.teamId || "TEAMID1234",
+    serialNumber: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    organizationName: v("orgName") || "Pass",
+    description: v("passDesc") || v("evTitle") || "Ticket",
+    backgroundColor: hexToRgb(v("colBg")) || "rgb(31,41,51)",
+    foregroundColor: hexToRgb(v("colFg")) || "rgb(255,255,255)",
+    labelColor: "rgb(183,192,201)",
+    barcodes: [{
+      format: v("bcFormat"),
+      message: $("bcMessage").value,
+      messageEncoding: v("bcEncoding"),
+      altText: v("bcAlt") || undefined
+    }]
+  };
+  if (!pass.barcodes[0].altText) delete pass.barcodes[0].altText;
+
+  var iso = localToIso(v("evDate"));
+  if (iso) pass.relevantDate = iso;
+
+  var body = b.fields;
+  if (b.style === "boardingPass") body.transitType = v("transitType");
+  pass[b.style] = body;
+  return pass;
+}
+
+/* ---------------- Signieren und packen ---------------- */
+
+function sha1Hex(bytes){
+  return crypto.subtle.digest("SHA-1", bytes.buffer ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) : bytes)
+    .then(function(buf){
+      return Array.prototype.map.call(new Uint8Array(buf), function(b){
+        return ("0" + b.toString(16)).slice(-2);
+      }).join("");
+    });
+}
+
+function signManifest(manifestBytes){
+  var p7 = forge.pkcs7.createSignedData();
+  p7.content = forge.util.createBuffer(bytesToForgeString(manifestBytes));
+  p7.addCertificate(state.cert);
+  p7.addCertificate(state.wwdr);
+  p7.addSigner({
+    key: state.key,
+    certificate: state.cert,
+    digestAlgorithm: forge.pki.oids.sha256,
+    authenticatedAttributes: [
+      { type: forge.pki.oids.contentType, value: forge.pki.oids.data },
+      { type: forge.pki.oids.messageDigest },
+      { type: forge.pki.oids.signingTime, value: new Date() }
+    ]
+  });
+  p7.sign({ detached: true });
+  var der = forge.asn1.toDer(p7.toAsn1()).getBytes();
+  var out = new Uint8Array(der.length);
+  for (var i = 0; i < der.length; i++) out[i] = der.charCodeAt(i) & 0xff;
+  return out;
+}
+
+function buildPkpass(){
+  var st = $("buildStatus");
+  if (!$("bcMessage").value.trim()){
+    setStatus(st, "Es fehlt der Codeinhalt aus Schritt 1.", "err"); return;
+  }
+  if (!state.cert || !state.key || !state.wwdr){
+    setStatus(st, "Es fehlen geprüfte Zertifikate aus Schritt 3.", "err"); return;
+  }
+  setStatus(st, "Pass wird gebaut …", "busy");
+
+  buildImages().then(function(images){
+    var enc = new TextEncoder();
+    var files = {};
+    Object.keys(images).forEach(function(k){ files[k] = images[k]; });
+    files["pass.json"] = enc.encode(JSON.stringify(buildPassJson(), null, 2));
+
+    var names = Object.keys(files);
+    return Promise.all(names.map(function(n){ return sha1Hex(files[n]); })).then(function(hashes){
+      var manifest = {};
+      names.forEach(function(n, i){ manifest[n] = hashes[i]; });
+      var manifestBytes = enc.encode(JSON.stringify(manifest, null, 2));
+
+      var zip = new JSZip();
+      names.forEach(function(n){ zip.file(n, files[n]); });
+      zip.file("manifest.json", manifestBytes);
+      zip.file("signature", signManifest(manifestBytes));
+
+      return zip.generateAsync({ type: "blob", mimeType: "application/vnd.apple.pkpass" });
+    });
+  }).then(function(blob){
+    var name = (v("orgName") || "pass").toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".pkpass";
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+    setStatus(st, "<b>" + name + " heruntergeladen.</b> Auf dem iPhone öffnen, etwa per AirDrop, Mail oder iCloud Drive. Wallet zeigt dann „Hinzufügen“.", "ok");
+    markDone("s4", true);
+  }).catch(function(err){
+    setStatus(st, "<b>Bauen fehlgeschlagen.</b> " + err.message, "err");
+  });
+}
+
+function showJson(){
+  var st = $("buildStatus");
+  var txt = JSON.stringify(buildPassJson(), null, 2);
+  setStatus(st, "<pre class='mono' style='white-space:pre-wrap;margin:0;overflow-wrap:anywhere'>" +
+    txt.replace(/[<>&]/g, function(c){ return { "<":"&lt;", ">":"&gt;", "&":"&amp;" }[c]; }) + "</pre>", "");
+}
+
+/* ---------------- Vorschau ---------------- */
+
+function refresh(){
+  var style = v("passStyle");
+  $("transitWrap").style.display = style === "boardingPass" ? "" : "none";
+  $("fieldsRoute").classList.toggle("hidden", style !== "boardingPass");
+  $("fieldsEvent").classList.toggle("hidden", style === "boardingPass");
+
+  var pv = $("pv");
+  pv.style.background = v("colBg") || "#1F2933";
+  pv.style.color = v("colFg") || "#FFFFFF";
+
+  $("pvOrg").textContent = v("orgName") || "Anbieter";
+
+  var d = v("evDate") ? new Date(v("evDate")) : null;
+  var dateTxt = d && !isNaN(d) ? d.toLocaleString("de-CH", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "—";
+  $("pvHeadVal").textContent = dateTxt;
+
+  if (style === "boardingPass"){
+    $("pvPrimLab").textContent = "Von → Nach";
+    $("pvPrim").textContent = (v("evFrom") || "—") + " → " + (v("evTo") || "—");
+  } else {
+    $("pvPrimLab").textContent = "Anlass";
+    $("pvPrim").textContent = v("evTitle") || v("passDesc") || "Noch kein Titel";
+  }
+
+  var row = $("pvRow"); row.innerHTML = "";
+  [["Ort", v("evVenue")], ["Platz", v("evSeat")], ["Name", v("evName")]].forEach(function(pair){
+    if (!pair[1]) return;
+    var el = document.createElement("div");
+    el.innerHTML = "<span class='p-lab'></span><span class='p-val'></span>";
+    el.querySelector(".p-lab").textContent = pair[0];
+    el.querySelector(".p-val").textContent = pair[1];
+    row.appendChild(el);
+  });
+
+  drawPreviewCode();
+  $("btnBuild").disabled = !($("bcMessage").value.trim() && state.cert && state.key && state.wwdr);
+}
+
+function drawPreviewCode(){
+  var box = $("pvCode");
+  var msg = $("bcMessage").value;
+  if (!msg.trim()){
+    box.innerHTML = "<div class='ph'><b>Kein Code</b>Ticket in Schritt 1 einlesen</div>";
+    return;
+  }
+  var fmt = v("bcFormat");
+  if (fmt === "PKBarcodeFormatQR" && window.QRCode){
+    var c = document.createElement("canvas");
+    QRCode.toCanvas(c, msg, { margin: 0, width: 220, errorCorrectionLevel: "M" }, function(err){
+      if (err){
+        box.innerHTML = "<div class='ph'><b>QR</b>" + msg.length + " Zeichen<br>zu lang für die Vorschau</div>";
+      } else {
+        box.innerHTML = ""; box.appendChild(c);
+      }
+    });
+    return;
+  }
+  var label = { PKBarcodeFormatAztec:"Aztec", PKBarcodeFormatPDF417:"PDF417", PKBarcodeFormatCode128:"Code 128" }[fmt] || "Code";
+  box.innerHTML = "<div class='ph'><b>" + label + "</b>" + msg.length + " Zeichen<br>wird unverändert übernommen</div>";
+}
+
+/* ---------------- Ereignisse ---------------- */
+
+var drop = $("drop");
+["dragenter","dragover"].forEach(function(ev){
+  drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("over"); });
+});
+["dragleave","drop"].forEach(function(ev){
+  drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove("over"); });
+});
+drop.addEventListener("drop", function(e){ handleTicket(e.dataTransfer.files[0]); });
+drop.addEventListener("keydown", function(e){
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("ticketFile").click(); }
+});
+$("ticketFile").addEventListener("change", function(e){ handleTicket(e.target.files[0]); });
+
+$("logoFile").addEventListener("change", function(e){
+  var f = e.target.files[0];
+  if (!f) { state.logo = null; return; }
+  var im = new Image();
+  im.onload = function(){ state.logo = im; refresh(); };
+  im.src = URL.createObjectURL(f);
+});
+
+$("btnCert").addEventListener("click", loadCertificates);
+$("btnBuild").addEventListener("click", buildPkpass);
+$("btnJson").addEventListener("click", showJson);
+
+["bcMessage","bcFormat","bcEncoding","bcAlt","passStyle","transitType","orgName","passDesc",
+ "evTitle","evFrom","evTo","evDate","evVenue","evSeat","evName","evNotes","colBg","colFg"]
+.forEach(function(id){
+  var el = $(id);
+  if (el) el.addEventListener("input", refresh);
+});
+$("passStyle").addEventListener("change", refresh);
+
+refresh();
+})();
+</script>
+</body>
+</html>
