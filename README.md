@@ -39,6 +39,8 @@ Alles zusammen als ZIP mit MIME-Typ `application/vnd.apple.pkpass`.
 ## Grenzen
 
 - Barcodes werden **nicht umkodiert**. Ein Aztec-Code bleibt Aztec, sonst scheitert die Kontrolle.
+- Bei Airline-PDFs (z. B. Eurowings), bei denen der Code klein auf einer ganzen A4-Seite sitzt,
+  scannt die App zusätzlich zur ganzen Seite auch überlappende Ausschnitte in höherer Auflösung.
 - Binäre Nutzlasten (häufig bei Bahntickets) überstehen den Umweg über Text nicht immer.
   Wenn die App auf `utf-8` umschaltet, ist Vorsicht angebracht.
 - Ob ein selbst gebauter Pass am Kontrollgerät akzeptiert wird, entscheidet der Anbieter.
