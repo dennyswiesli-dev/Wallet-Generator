@@ -416,19 +416,73 @@ function zxHints(){
   return ZX_HINTS;
 }
 
-function decodeCanvas(canvas){
+/* Airline-PDFs (z. B. Eurowings) betten den Barcode oft klein in eine
+   ganze A4-Seite ein. Der MultiFormatReader über die ganze Seite findet
+   das Muster dann selten. Deshalb: mehrere Binarizer, mehrere Ausschnitte
+   (Kacheln) und mehrere Skalierungen probieren, statt nur ein Mal die
+   ganze Fläche zu lesen. */
+var ZX_BINARIZERS = null;
+function zxBinarizers(){
+  if (!ZX_BINARIZERS){
+    ZX_BINARIZERS = [ZXing.HybridBinarizer];
+    if (ZXing.GlobalHistogramBinarizer) ZX_BINARIZERS.push(ZXing.GlobalHistogramBinarizer);
+  }
+  return ZX_BINARIZERS;
+}
+
+function decodeSource(src){
+  var reader = new ZXing.MultiFormatReader();
+  reader.setHints(zxHints());
+  var binarizers = zxBinarizers();
+  var variants = [src, src.invert()];
+  for (var v = 0; v < variants.length; v++){
+    for (var b = 0; b < binarizers.length; b++){
+      try {
+        var Binarizer = binarizers[b];
+        var bitmap = new ZXing.BinaryBitmap(new Binarizer(variants[v]));
+        var res = reader.decode(bitmap, zxHints());
+        if (res) return { text: res.getText(), format: res.getBarcodeFormat() };
+      } catch (e) { /* nächster Versuch */ }
+    }
+  }
+  return null;
+}
+
+function canvasRegion(canvas, x, y, w, h){
+  var c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  c.getContext("2d").drawImage(canvas, x, y, w, h, 0, 0, w, h);
+  return c;
+}
+
+function luminanceSourceFor(canvas){
   var ctx = canvas.getContext("2d");
   var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  var src = new ZXing.RGBLuminanceSource(img.data, canvas.width, canvas.height);
-  var attempts = [src, src.invert()];
-  for (var i = 0; i < attempts.length; i++){
-    try {
-      var bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(attempts[i]));
-      var reader = new ZXing.MultiFormatReader();
-      reader.setHints(zxHints());
-      var res = reader.decode(bitmap, zxHints());
-      if (res) return { text: res.getText(), format: res.getBarcodeFormat() };
-    } catch (e) { /* nächster Versuch */ }
+  return new ZXing.RGBLuminanceSource(img.data, canvas.width, canvas.height);
+}
+
+function decodeCanvas(canvas){
+  /* 1) ganze Fläche */
+  var hit = decodeSource(luminanceSourceFor(canvas));
+  if (hit) return hit;
+
+  /* 2) Kacheln, falls der Code klein in einer grossen Seite steckt */
+  var W = canvas.width, H = canvas.height;
+  if (W * H < 400 * 400) return null;
+  var cols = 3, rows = 3, overlap = 0.15;
+  var tileW = Math.ceil(W / cols), tileH = Math.ceil(H / rows);
+  var padW = Math.round(tileW * overlap), padH = Math.round(tileH * overlap);
+  for (var r = 0; r < rows; r++){
+    for (var c = 0; c < cols; c++){
+      var x = Math.max(0, c * tileW - padW);
+      var y = Math.max(0, r * tileH - padH);
+      var w = Math.min(W - x, tileW + padW * 2);
+      var h = Math.min(H - y, tileH + padH * 2);
+      if (w < 60 || h < 60) continue;
+      var region = canvasRegion(canvas, x, y, w, h);
+      var found = decodeSource(luminanceSourceFor(region));
+      if (found) return found;
+    }
   }
   return null;
 }
@@ -438,7 +492,8 @@ function fileToCanvasImage(file){
     var url = URL.createObjectURL(file);
     var im = new Image();
     im.onload = function(){
-      var scale = Math.min(2200 / Math.max(im.width, im.height), 3);
+      var maxDim = 3600;
+      var scale = Math.min(maxDim / Math.max(im.width, im.height), 4);
       if (!isFinite(scale) || scale < 1) scale = 1;
       var c = document.createElement("canvas");
       c.width = Math.round(im.width * scale);
@@ -456,16 +511,23 @@ function pdfToCanvases(file){
   return file.arrayBuffer().then(function(buf){
     return pdfjsLib.getDocument({ data: buf }).promise;
   }).then(function(pdf){
-    var pages = Math.min(pdf.numPages, 4), tasks = [];
-    for (var p = 1; p <= pages; p++){
+    var pages = Math.min(pdf.numPages, 6), tasks = [];
+    var _loop = function(p){
       tasks.push(pdf.getPage(p).then(function(page){
-        var vp = page.getViewport({ scale: 3 });
+        var base = page.getViewport({ scale: 1 });
+        /* so hoch skalieren, wie es für einen scharfen Barcode nötig ist,
+           aber innerhalb sicherer Canvas-Pixelgrenzen bleiben */
+        var maxPixels = 16000000;
+        var scale = Math.sqrt(maxPixels / (base.width * base.height));
+        scale = Math.max(2, Math.min(scale, 6));
+        var vp = page.getViewport({ scale: scale });
         var c = document.createElement("canvas");
         c.width = Math.round(vp.width); c.height = Math.round(vp.height);
         return page.render({ canvasContext: c.getContext("2d"), viewport: vp })
                    .promise.then(function(){ return c; });
       }));
-    }
+    };
+    for (var p = 1; p <= pages; p++) _loop(p);
     return Promise.all(tasks);
   });
 }
